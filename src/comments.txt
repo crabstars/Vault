@@ -1,0 +1,23 @@
+Usage:
+    Version 0.1
+    vault --help
+    vault new --name "SaveSpace" / creates new database with the name SaveSpace.encrypted (without the name is vault1.encrypted) and then u are asked two times for the password
+    vault open "SaveSpace" / asks for the password for SaveSpace if correct a new menu with all Entries is listed. There u can select a number and which prop u want to copy (default copy to clippboard) or u can create new Entry
+
+
+    Version 0.2
+    vault delete "SaveSpace / writing abretary numbers instead and confirm a real delte
+    you can write methods to set strings as env variables
+    you can write methods to delete certain env variables
+
+
+
+
+// file with created databases (all paths) -> select one or enter path
+// support Windows, Linux, and OSX
+// Set von passwords in file
+// you can write methods to set strings as env variables
+// you can write methods to delete certain env variables\
+// integration with keepass or other password manager(maybe some online)
+// copy password to clipboard
+// file locking?? wann sinnvoll?
