@@ -1,12 +1,12 @@
 mod encryption_and_decryption;
 
+use anyhow::Ok;
 use clap::{Parser, Subcommand};
-use encryption_and_decryption::argon::{encrypt_text, decrypt_file};
+use encryption_and_decryption::argon::{encrypt_text, decrypt_text};
 use serde::{Deserialize, Serialize};
-use std::{env, time::SystemTime};
-use chrono::{DateTime, Utc, Local};
+use std::{env};
+use chrono::{DateTime, Local};
 
-use crate::encryption_and_decryption::argon::decrypt_text;
 
 #[derive(Parser)]
 #[clap(version = "0.1", author = "Daniel Waechtler https://github.com/LamaKami")]
@@ -76,21 +76,26 @@ struct DatabaseFile{
 
 
 fn main() -> Result<(), anyhow::Error> {
-    // let command = Command::parse();
-    // let local: DateTime<Local> = Local::now(); // e.g. `2014-11-28T21:45:59.324310806+09:00`
-
+    let command = Command::parse();
     
-    // match command.subcmd{
-    //     SubCommand::New(sc) => create_new_database(sc)?,
-    //     SubCommand::Open(sc) => todo!(),
-    // }
+    match command.subcmd{
+        SubCommand::New(sc) => create_new_database(sc)?,
+        SubCommand::Open(sc) => open_database(sc)?,
+    }
 
-    //encrypt_text("text von mir", "bla.text.decrypted", "password")?;
-    println!("{}",decrypt_text("bla.text.decrypted", "password")?);
     Ok(())
 }
 
-
+fn open_database(mut args: Open) -> Result<(), anyhow::Error>{
+    if args.path.is_none(){
+        args.path = Some(env::current_dir()?);
+    }
+    let password = rpassword::prompt_password_stdout("Please enter the password:")?;
+    //Todo build path
+    let text = decrypt_text(&args.database_name, &password)?;
+    let db: DatabaseFile = serde_json::from_str(&text)?;
+    Ok(())
+}
 
 fn create_new_database(mut args: New) -> Result<(), anyhow::Error>{
     if args.path.is_none(){
@@ -106,7 +111,14 @@ fn create_new_database(mut args: New) -> Result<(), anyhow::Error>{
             break;
         }
     }
+    let db = DatabaseFile{entries: Vec::new(),
+        config: Config { comment:"todo".to_string(),
+        author: "todo".to_string() }, last_access: Local::now()};
     
+    let serialized_db = serde_json::to_string(&db)?;
+    //Todo build path
+    encrypt_text(&serialized_db , &args.database_name, &password)?;
+    println!("{:?}", serialized_db);
     // TODO switch to overview from database where u can add and remove things
     Ok(())
 }

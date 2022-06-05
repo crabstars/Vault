@@ -7,12 +7,11 @@ use chacha20poly1305::{
 };
 use rand::{rngs::OsRng, RngCore};
 use std::{
-    fs::File,
-    io::{Read, Write},
+    fs::{File},
+    io::{Read, Write}, vec,
 };
 use std::str;
 use zeroize::Zeroize;
-
 
 // Orientation: https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html
 fn argon2_config<'a>() -> argon2::Config<'a> {
@@ -40,10 +39,11 @@ pub fn encrypt_text(
 
     let mut key = argon2::hash_raw(password.as_bytes(), &salt, &argon2_config)?;
 
+    // [..32] skips the salt
     let aead = XChaCha20Poly1305::new(key[..32].as_ref().into());
     let mut stream_encryptor = stream::EncryptorBE32::from_aead(aead, nonce.as_ref().into());
 
-    let mut dist_file = File::create(dist_file_path)?;
+    let mut dist_file = File::create(dist_file_path.to_owned() + ".vault")?;
 
     dist_file.write(&salt)?;
     dist_file.write(&nonce)?;
@@ -89,8 +89,8 @@ pub fn decrypt_text(
     let aead = XChaCha20Poly1305::new(key[..32].as_ref().into());
     let mut stream_decryptor = stream::DecryptorBE32::from_aead(aead, nonce.as_ref().into());
 
-    let buf:Vec<u8> = Vec::new();
-
+    let mut buf:Vec<u8> = vec![];
+    encrypted_file.read_to_end(&mut buf)?;
     let plaintext = stream_decryptor
                 .decrypt_next(buf.as_slice())
                 .map_err(|err| anyhow!("Decrypting file: {}", err))?;
