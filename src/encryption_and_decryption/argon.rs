@@ -1,5 +1,3 @@
-// Code inspired by https://github.com/skerkour/kerkour.com/blob/main/2022/rust_file_encryption_with_password/src/main.rs
-
 use anyhow::anyhow;
 use chacha20poly1305::{
     aead::{stream, NewAead},
@@ -7,12 +5,19 @@ use chacha20poly1305::{
 };
 use rand::{rngs::OsRng, RngCore};
 use std::{
-    fs::{File},
-    io::{Read, Write}, vec,
+    fs::File,
+    io::{Read, Write}, vec, path::PathBuf,
 };
 use std::str;
 use zeroize::Zeroize;
 
+macro_rules! empty_all {
+    ($($item:expr), *) => {
+        $(
+            $item.zeroize();
+        )*
+    }
+}
 // Orientation: https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html
 fn argon2_config<'a>() -> argon2::Config<'a> {
     return argon2::Config {
@@ -27,43 +32,38 @@ fn argon2_config<'a>() -> argon2::Config<'a> {
 
 pub fn encrypt_text(
     text: &str,
-    dist_file_path: &str,
+    dist_file_path: &PathBuf,
     password: &str,
 ) -> Result<(), anyhow::Error> {
-    let argon2_config = argon2_config();
 
     let mut salt = [0u8; 32];
     let mut nonce = [0u8; 19];
     OsRng.fill_bytes(&mut salt);
     OsRng.fill_bytes(&mut nonce);
 
-    let mut key = argon2::hash_raw(password.as_bytes(), &salt, &argon2_config)?;
+    let mut key = argon2::hash_raw(password.as_bytes(), &salt, &argon2_config())?;
 
     // [..32] skips the salt
     let aead = XChaCha20Poly1305::new(key[..32].as_ref().into());
     let mut stream_encryptor = stream::EncryptorBE32::from_aead(aead, nonce.as_ref().into());
-
-    let mut dist_file = File::create(dist_file_path.to_owned() + ".vault")?;
+    let mut dist_file = File::create(dist_file_path.to_owned())?;
 
     dist_file.write(&salt)?;
     dist_file.write(&nonce)?;
-
 
     let ciphertext = stream_encryptor
         .encrypt_next(text.as_bytes())
         .map_err(|err| anyhow!("Encrypting file: {}", err))?;
     dist_file.write(&ciphertext)?;
 
-    salt.zeroize();
-    nonce.zeroize();
-    key.zeroize();
-
+    empty_all!(nonce, key, salt);
+    
     Ok(())
 }
 
 
 pub fn decrypt_text(
-    encrypted_file_path: &str,
+    encrypted_file_path: &PathBuf,
     password: &str,
 ) -> Result<String, anyhow::Error> {
     let mut salt = [0u8; 32];
@@ -82,23 +82,19 @@ pub fn decrypt_text(
         return Err(anyhow!("Error reading nonce."));
     }
 
-    let argon2_config = argon2_config();
-
-    let mut key = argon2::hash_raw(password.as_bytes(), &salt, &argon2_config)?;
+    let mut key = argon2::hash_raw(password.as_bytes(), &salt, &argon2_config())?;
 
     let aead = XChaCha20Poly1305::new(key[..32].as_ref().into());
     let mut stream_decryptor = stream::DecryptorBE32::from_aead(aead, nonce.as_ref().into());
 
     let mut buf:Vec<u8> = vec![];
     encrypted_file.read_to_end(&mut buf)?;
-    let plaintext = stream_decryptor
+    let text = stream_decryptor
                 .decrypt_next(buf.as_slice())
                 .map_err(|err| anyhow!("Decrypting file: {}", err))?;
-            file_content.push_str(str::from_utf8(&plaintext)?);
+            file_content.push_str(str::from_utf8(&text)?);
 
 
-    salt.zeroize();
-    nonce.zeroize();
-    key.zeroize();
+    empty_all!(nonce, key, salt);
     Ok(file_content)
 }
