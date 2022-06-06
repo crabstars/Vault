@@ -1,9 +1,10 @@
 mod database;
+mod utils;
 mod encryption_and_decryption;
 
 use anyhow::Ok;
 use clap::{Parser, Subcommand};
-use database::operations::{create_new_database, open_database, save_database, manage_databse};
+use database::operations::{create_new_database, open_database, manage_database};
 
 #[derive(Parser)]
 #[clap(version = "0.1", author = "Daniel Waechtler https://github.com/LamaKami")]
@@ -42,18 +43,14 @@ pub struct Open{
     path: Option<std::path::PathBuf>
 }
 
-
-
-
 fn main() -> Result<(), anyhow::Error> {
     let command = Command::parse();
     
     match command.subcmd{
         SubCommand::New(sc) => create_new_database(sc)?,
-        SubCommand::Open(sc) => {
-            let db = open_database(sc)?;
-            manage_databse(&db);
-            save_database(db);
+        SubCommand::Open(mut sc) => {
+            let mut db = open_database(&mut sc)?;
+            manage_database(&mut db, &sc)?;
         },
     }
 
