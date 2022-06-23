@@ -9,6 +9,7 @@ Usage:
     vault delete "SaveSpace / writing abretary numbers instead and confirm a real delte
     you can write methods to set strings as env variables
     you can write methods to delete certain env variables
+    automaticly create passwords
 
 
 
