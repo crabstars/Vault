@@ -2,6 +2,7 @@ use std::path::PathBuf;
 use std::{env};
 use anyhow::Ok;
 use chrono::Local;
+use uuid::Uuid;
 
 use crate::{New, Open};
 use crate::database::structures::{Config, DatabaseFile, EntryType};
@@ -66,11 +67,13 @@ pub fn manage_database(db: &mut DatabaseFile, args: &Open) -> Result<(), anyhow:
 pub fn add_entry(db: &mut DatabaseFile) -> Result<(), anyhow::Error>{
     
     let title = prompt_user("Enter the title for the entry:");
-    let name = prompt_user("Enter the corresponding name for the future password:");
+    let name = prompt_user("Enter the username");
+    let url = prompt_user("Enter the url");
     let comment  = prompt_user("Enter additional informations:");
 
+    let id = Uuid::new_v4().to_string();
     let value = prompt_password()?;
-    db.entries.push(PasswordEntry{title, name, value, comment, entry_type: EntryType::ClassicPassword, last_modified: Local::now()});
+    db.entries.push(PasswordEntry{id, title, name, value, url, comment, entry_type: EntryType::ClassicPassword, last_modified: Local::now()});
     return Ok(())
 }
 
@@ -80,6 +83,7 @@ pub fn remove_entry() -> Result<(), anyhow::Error>{
 }
 
 pub fn get_entry(){
+    // TODO
     // get Speciffic infos
 }
 

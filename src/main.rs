@@ -1,10 +1,12 @@
 mod database;
 mod utils;
 mod encryption_and_decryption;
+mod ui;
 
 use anyhow::Ok;
 use clap::{Parser, Subcommand};
 use database::operations::{create_new_database, open_database, manage_database};
+use ui::home_screen::run_gui;
 
 #[derive(Parser)]
 #[clap(version = "0.1", author = "Daniel Waechtler https://github.com/LamaKami")]
@@ -50,7 +52,8 @@ fn main() -> Result<(), anyhow::Error> {
         SubCommand::New(sc) => create_new_database(sc)?,
         SubCommand::Open(mut sc) => {
             let mut db = open_database(&mut sc)?;
-            manage_database(&mut db, &sc)?;
+            //manage_database(&mut db, &sc)?;
+            run_gui();
         },
     }
 

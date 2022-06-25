@@ -1,6 +1,7 @@
 use serde::{Serialize, Deserialize};
 use chrono::{DateTime, Local};
 
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum EntryType{
     ClassicPassword,
@@ -9,9 +10,11 @@ pub enum EntryType{
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct PasswordEntry {
+    pub id: String,
     pub title: String,
     pub name: String, // like username or variable name
     pub value: String, //or password
+    pub url: String,
     pub comment: String,
     pub entry_type: EntryType,
     pub last_modified:  DateTime<Local>
