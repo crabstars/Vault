@@ -5,7 +5,7 @@ mod ui;
 
 use anyhow::Ok;
 use clap::{Parser, Subcommand};
-use database::operations::{create_new_database, open_database, manage_database};
+use database::operations::{create_new_database, open_database, manage_database, open_database_for_manage};
 use ui::home_screen::run_gui;
 
 #[derive(Parser)]
@@ -19,6 +19,7 @@ struct Command {
 enum SubCommand {
     New(New), // Syntax is needed later to give a reference to access the props from the struct
     Open(Open),
+    Manage(Manage),
 }
 
 #[derive(Parser)]
@@ -45,15 +46,30 @@ pub struct Open{
     path: Option<std::path::PathBuf>
 }
 
+#[derive(Parser)]
+pub struct Manage{
+    /// FileName from the existing database
+    #[clap(short, long)]
+    database_name: String,
+
+    /// Absolute path for file is required
+    #[clap(short, long)]
+    #[clap(parse(from_os_str))]
+    path: Option<std::path::PathBuf>
+}
+
 fn main() -> Result<(), anyhow::Error> {
     let command = Command::parse();
     
     match command.subcmd{
         SubCommand::New(sc) => create_new_database(sc)?,
+        SubCommand::Manage(mut sc) =>{
+            let mut db = open_database_for_manage(&mut sc)?;
+            manage_database(&mut db, &sc)?;
+        }
         SubCommand::Open(mut sc) => {
             let mut db = open_database(&mut sc)?;
-            //manage_database(&mut db, &sc)?;
-            run_gui();
+            run_gui(db);
         },
     }
 
