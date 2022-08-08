@@ -13,7 +13,7 @@ pub fn prompt_user(question: &str) -> String{
     if let Some('\r')=answer.chars().next_back() {
         answer.pop();
     }
-    return answer
+    answer
 }
 
 pub fn prompt_password() -> Result<String, anyhow::Error>{

@@ -6,7 +6,7 @@ use super::enums::MenuItem;
 pub fn key_down(active_menu_item: MenuItem, password_entires_list_state: &mut ListState, db: &DatabaseFile){
     if active_menu_item == MenuItem::PasswordEntries{
         if let Some(selected) = password_entires_list_state.selected() {
-            let amount_entries = get_password_entires(&db).len();
+            let amount_entries = get_password_entires(db).len();
             if selected >= amount_entries - 1 {
                 password_entires_list_state.select(Some(0));
             } else {
@@ -21,7 +21,7 @@ pub fn key_down(active_menu_item: MenuItem, password_entires_list_state: &mut Li
 pub fn key_up(active_menu_item: MenuItem, password_entires_list_state: &mut ListState, db: &DatabaseFile){
     if active_menu_item == MenuItem::PasswordEntries{
         if let Some(selected) = password_entires_list_state.selected() {
-            let amount_entries = get_password_entires(&db).len();
+            let amount_entries = get_password_entires(db).len();
             if selected > 0 {
                 password_entires_list_state.select(Some(selected - 1));
             } else {

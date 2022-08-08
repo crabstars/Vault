@@ -8,6 +8,7 @@ use clap::{Parser, Subcommand};
 use database::operations::{create_new_database, open_database, manage_database, open_database_for_manage};
 use ui::home_screen::run_gui;
 
+
 #[derive(Parser)]
 #[clap(version = "0.1", author = "Daniel Waechtler https://github.com/LamaKami")]
 struct Command {
@@ -69,7 +70,7 @@ fn main() -> Result<(), anyhow::Error> {
         }
         SubCommand::Open(mut sc) => {
             let mut db = open_database(&mut sc)?;
-            run_gui(db);
+            run_gui(db);  
         },
     }
 
