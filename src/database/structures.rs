@@ -17,12 +17,12 @@ pub struct PasswordEntry {
     pub url: String,
     pub comment: String,
     pub entry_type: EntryType,
-    pub last_modified:  DateTime<Local>
+    pub last_modified: DateTime<Local>
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Config{
-    // all the argon props and more
+    // maybe all the argon props and more
     pub(crate) comment: String,
     pub(crate) author: String,
 }
