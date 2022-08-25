@@ -23,7 +23,7 @@ use super::enums::*;
 
 pub fn run_gui(db: DatabaseFile) -> Result<(), Box<dyn std::error::Error>> {
     enable_raw_mode().expect("can run in raw mode");
-    let mut app = App::default();
+    let app = App::default();
 
     let (tx, rx) = mpsc::channel();
     let tick_rate = Duration::from_millis(200);

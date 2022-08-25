@@ -69,7 +69,7 @@ fn main() -> Result<(), anyhow::Error> {
             manage_database(&mut db, &sc)?;
         }
         SubCommand::Open(mut sc) => {
-            let db = open_database(&mut sc)?;
+            let mut db = open_database(&mut sc)?;
             run_gui(db);  
         },
     }
