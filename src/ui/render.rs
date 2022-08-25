@@ -154,17 +154,17 @@ fn get_menu_for_mode<'a>(active_menu_item: &MenuItem) -> Vec<Spans<'a>> {
     };
 
     return men
-                .iter()
-                .map(|t| {
-                    let (first, rest) = t.split_at(1);
-                    Spans::from(vec![
-                        Span::styled(
-                            first,
-                            Style::default()
-                                .fg(Color::Yellow)
-                                .add_modifier(Modifier::UNDERLINED),
+            .iter()
+            .map(|t| {
+                let (first, rest) = t.split_at(1);
+                Spans::from(vec![
+                    Span::styled(
+                        first,
+                        Style::default()
+                            .fg(Color::Yellow)
+                            .add_modifier(Modifier::UNDERLINED),
                         ),
-                        Span::styled(rest, Style::default().fg(Color::White)),
+                    Span::styled(rest, Style::default().fg(Color::White)),
                     ])
                 })
                 .collect();
@@ -253,7 +253,7 @@ fn render_selected_entry<'a>(index: usize, detail_list_state: &ListState, app: &
     let mut text = vec![];
 
     // TODO improve code because DRY
-    if app.input.clone().len() != 0 && app.input.len() > app.input_index-1{
+    if app.input.clone().is_empty() && app.input.len() > app.input_index-1{
           text = vec![
             Spans::from(vec![
                 Span::styled(&app.input[..app.input_index-1], Style::default().fg(Color::Blue)), //before index
@@ -262,7 +262,7 @@ fn render_selected_entry<'a>(index: usize, detail_list_state: &ListState, app: &
             ])
         ];
 
-    } else if app.input.clone().len() != 0{
+    } else if app.input.clone().is_empty(){
         text = vec![
             Spans::from(vec![
                 Span::styled(&app.input[..app.input_index-1], Style::default().fg(Color::Blue)), //before index
@@ -273,10 +273,7 @@ fn render_selected_entry<'a>(index: usize, detail_list_state: &ListState, app: &
 
     text.push(Spans::from(vec![
         Span::styled(app.input_index.to_string(), Style::default().fg(Color::Green)), //before index
-    ]));
-
-   
-   
+    ]));   
 
     let input_field = Paragraph::new(text)
         .block(Block::default().title("Paragraph").borders(Borders::ALL))
