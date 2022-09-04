@@ -9,21 +9,19 @@ use std::thread;
 use std::time::{Duration, Instant};
 use tui::{
     backend::CrosstermBackend,
-    widgets::{
-        ListState,
-    },
+    widgets::ListState,
     Terminal,
 };
 
-use crate::database::{structures::DatabaseFile};
+use crate::database::{structures::DatabaseFile, operations};
 
 use super::{render::*, input_actions, menu_actions};
 use super::structures::*;
 use super::enums::*;
 
-pub fn run_gui(db: DatabaseFile) -> Result<(), Box<dyn std::error::Error>> {
+pub fn run_gui(db: &mut DatabaseFile) -> Result<(), Box<dyn std::error::Error>> {
     enable_raw_mode().expect("can run in raw mode");
-    let app = App::default();
+    let mut app = App::default();
 
     let (tx, rx) = mpsc::channel();
     let tick_rate = Duration::from_millis(200);
@@ -58,6 +56,8 @@ pub fn run_gui(db: DatabaseFile) -> Result<(), Box<dyn std::error::Error>> {
 
     let mut detail_list_state = ListState::default();
     detail_list_state.select(Some(0));
+    let mut attribute_count = 0;
+    let mut show_value = false;
 
     loop {
         terminal.draw(|rect| {
@@ -71,10 +71,11 @@ pub fn run_gui(db: DatabaseFile) -> Result<(), Box<dyn std::error::Error>> {
             match active_menu_item {
                 MenuItem::Home => rect.render_widget(render_home(), chunks[1]),
                 MenuItem::PasswordEntries => {
-                    menu_actions::password_entires_menu(&mut password_entires_list_state, &db, rect, &chunks);
+                    menu_actions::password_entires_menu(&mut password_entires_list_state, db, rect, &chunks);
             },
                 MenuItem::SelctedEntry => {
-                    display_selected_entry(&db, &app, rect, &mut detail_list_state, password_entires_list_state.selected().unwrap(), &chunks)
+                    attribute_count = display_selected_entry(db, &app, rect, &mut detail_list_state,
+                                                             password_entires_list_state.selected().unwrap(), &chunks, &show_value)
                 },
             }
             rect.render_widget(info, chunks[2]);
@@ -85,30 +86,102 @@ pub fn run_gui(db: DatabaseFile) -> Result<(), Box<dyn std::error::Error>> {
             Event::Input(event) => {
                 match app.input_mode {
                     InputMode::Navigation => match event.code {
+                        KeyCode::Char('a') => {
+                            if active_menu_item == MenuItem::PasswordEntries{
+                                operations::add_entry(db)?;
+                                active_menu_item = MenuItem::SelctedEntry;
+                                password_entires_list_state.select(Some(operations::get_password_entires(db).len()-1));
+                            }
+                        }
+                        KeyCode::Char('c') => {
+                            input_actions::key_code_c(active_menu_item, &password_entires_list_state,
+                                                      &detail_list_state, db);
+                        }
+                        KeyCode::Char('e') => {
+                            if active_menu_item == MenuItem::SelctedEntry{
+                                app.input_mode = InputMode::Editing;
+
+                                let index_entries = password_entires_list_state.selected().unwrap();
+                                let index_detail = detail_list_state.selected().unwrap();
+                                app.input = operations::get_value_from_selected_detail(db, index_entries, index_detail);
+                                app.input_index = app.input.len()+1;
+                            }
+                        }
+                        KeyCode::Char('h') => {
+                            active_menu_item = MenuItem::Home;
+                            show_value = false;
+                        }
+                        KeyCode::Char('p') => {
+                            active_menu_item = MenuItem::PasswordEntries;
+                            show_value = false;
+                        }
                         KeyCode::Char('q') => {
                             disable_raw_mode()?;
                             terminal.show_cursor()?;
                             break;
                         }
-                        KeyCode::Char('p') => {
-                            active_menu_item = MenuItem::PasswordEntries
-                        }
-                        KeyCode::Char('h') => {
-                            active_menu_item = MenuItem::Home
+                        KeyCode::Char('r') =>{
+                            let password_len = operations::get_password_entires(db).len();
+                            if active_menu_item == MenuItem::PasswordEntries && password_len != 0 && password_len > password_entires_list_state.selected().unwrap_or(0){
+                                operations::remove_entry(db, password_entires_list_state.selected().unwrap())?;
+                            }
                         }
                         KeyCode::Char('s') => {
-                            active_menu_item = MenuItem::SelctedEntry
+                            if active_menu_item == MenuItem::PasswordEntries{
+                                let password_len = operations::get_password_entires(db).len();
+                                if password_len != 0 && password_len > password_entires_list_state.selected().unwrap_or(0){
+                                    active_menu_item = MenuItem::SelctedEntry
+                                }
+                            } else if active_menu_item == MenuItem::SelctedEntry{
+                                show_value = !show_value;
+                            }
                         }
                         KeyCode::Down => {
-                            input_actions::key_down(active_menu_item, &mut password_entires_list_state, &db);
+                            input_actions::key_down(active_menu_item, &mut password_entires_list_state,
+                                                    &mut detail_list_state, db, &attribute_count);
                         }
                         KeyCode::Up => {
-                            input_actions::key_up(active_menu_item, &mut password_entires_list_state, &db);
+                            input_actions::key_up(active_menu_item, &mut password_entires_list_state,
+                                                  &mut detail_list_state, db, &attribute_count);
                         }
                         _ => {} 
                     }
                     InputMode::Editing => match event.code{
-                        
+                        KeyCode::Enter => {
+                            input_actions::key_enter(&mut app, &mut password_entires_list_state, &mut detail_list_state, db)
+                        }
+                        KeyCode::Esc => {
+                            app.input_mode = InputMode::Navigation;
+                            app.input_index = 0;
+                            app.input = String::new();
+                        }
+                        KeyCode::Char(c) => {
+                            if app.input_index == 0{
+                                app.input.insert(app.input_index, c);
+                                app.input_index += 1;
+                            } else{
+                                app.input.insert(app.input_index-1, c);
+                            }
+                            
+                            app.input_index += 1;
+                            
+                        }
+                        KeyCode::Backspace => {
+                            if !app.input.is_empty() && app.input_index > 1{
+                                app.input.remove(app.input_index-2);
+                                app.input_index -= 1;                                
+                            }
+                        }
+                        KeyCode::Right =>{
+                            if app.input_index < app.input.len()+1{
+                                app.input_index += 1
+                            }
+                        }
+                        KeyCode::Left =>{
+                            if app.input_index > 1{
+                                app.input_index -= 1
+                            }
+                        }
                         _ => {}
                     },
                     _ => {},

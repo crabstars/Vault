@@ -13,7 +13,7 @@ pub fn password_entires_menu(password_entires_list_state: &mut ListState, db: &D
             [Constraint::Percentage(20), Constraint::Percentage(80)].as_ref(),
         )
         .split(chunks[1]);
-    let (left, right) = render_password_entires(&password_entires_list_state, &db);
+    let (left, right) = render_password_entires(password_entires_list_state, db);
     rect.render_stateful_widget(left, password_entry_chunks[0], password_entires_list_state);
     rect.render_widget(right, password_entry_chunks[1]);
 }

@@ -1,10 +1,15 @@
 use std::path::PathBuf;
-use std::{env};
+use std::env;
 use anyhow::Ok;
 use chrono::Local;
 use uuid::Uuid;
+use tui::{
+    widgets::{
+        ListState
+    }
+};
 
-use crate::{New, Open, Manage};
+use crate::{New, Open};
 use crate::database::structures::{Config, DatabaseFile, EntryType};
 use crate::encryption_and_decryption::argon::{decrypt_text, encrypt_text};
 use crate::utils::terminal_interactions::{prompt_user, prompt_password};
@@ -18,21 +23,7 @@ pub fn open_database(args: &mut Open) -> Result<DatabaseFile, anyhow::Error>{
     }
     
     let password = rpassword::prompt_password("Please enter the password:")?;
-    let text = decrypt_text(&args.path.as_ref().unwrap_or(&PathBuf::new().join(args.database_name.to_owned()+".vault")), &password)?;
-    let mut db: DatabaseFile = serde_json::from_str(&text)?;
-    db.last_access = Local::now();
-    println!("{:?}",db);
-
-    Ok(db)
-}
-
-pub fn open_database_for_manage(args: &mut Manage) -> Result<DatabaseFile, anyhow::Error>{
-    if args.path.is_none(){
-        args.path = Some(env::current_dir()?.join(&args.database_name));
-    }
-    
-    let password = rpassword::prompt_password("Please enter the password:")?;
-    let text = decrypt_text(&args.path.as_ref().unwrap_or(&PathBuf::new().join(args.database_name.to_owned()+".vault")), &password)?;
+    let text = decrypt_text(args.path.as_ref().unwrap_or(&PathBuf::new().join(args.database_name.to_owned()+".vault")), &password)?;
     let mut db: DatabaseFile = serde_json::from_str(&text)?;
     db.last_access = Local::now();
     println!("{:?}",db);
@@ -42,7 +33,7 @@ pub fn open_database_for_manage(args: &mut Manage) -> Result<DatabaseFile, anyho
 
 pub fn create_new_database(mut args: New) -> Result<(), anyhow::Error>{
     if args.path.is_none(){
-        args.path = Some(env::current_dir()?.join(args.database_name.to_owned()+ ".vault"));
+        args.path = Some(env::current_dir()?.join(args.database_name.to_owned() + ".vault"));
     }
 
     let password = prompt_password()?;
@@ -54,73 +45,58 @@ pub fn create_new_database(mut args: New) -> Result<(), anyhow::Error>{
     
     let serialized_db = serde_json::to_string(&db)?;
     encrypt_text(&serialized_db , &args.path.unwrap_or(PathBuf::new().join(args.database_name+".vault")), &password)?;
-    println!("{:?}", serialized_db);
-    // TODO switch to overview from database where u can add and remove things
     Ok(())
 }
 
-pub fn manage_database(db: &mut DatabaseFile, args: &Manage) -> Result<(), anyhow::Error>{
-    loop {
-        let decision = prompt_user("What do you want to do? \n 
-(1) Add Entry \n 
-(2) Remove Entry \n 
-(3) Get Entry \n 
-(4) Show Entries \n
-(5) End\n\n"); 
-        
-        match decision.as_str() {
-            "1" => add_entry(db)?,
-            "2" => remove_entry()?,
-            "4" => show_entries(db),
-            "5" => {save_database(db, args)?; return Ok(());},
-            _ => println!("Wrong input, only: 1, 2, 3, 4, 5")
-        } 
-    }    
-}
-
-pub fn add_entry(db: &mut DatabaseFile) -> Result<(), anyhow::Error>{
-    
-    let title = prompt_user("Enter the title for the entry: ");
-    let name = prompt_user("Enter the username: ");
-    let url = prompt_user("Enter the url: ");
-    let comment  = prompt_user("Enter additional informations: ");
+pub fn add_entry(db: &mut DatabaseFile) -> Result<(), anyhow::Error>{ 
+    let title = String::from(""); 
+    let name = String::from("New Entry");
+    let url = String::from("");
+    let comment = String::from("");
+    let value = String::from("");
 
     let id = Uuid::new_v4().to_string();
-    let value = prompt_password()?;
     db.entries.push(PasswordEntry{id, title, name, value, url, comment, entry_type: EntryType::ClassicPassword, last_modified: Local::now()});
-    return Ok(())
+    Ok(())
 }
 
-pub fn remove_entry() -> Result<(), anyhow::Error>{
-    // Todo before tui
-    return Ok(());
+pub fn remove_entry(db: &mut DatabaseFile, index: usize) -> Result<(), anyhow::Error>{
+    db.entries.remove(index);
+    Ok(())
 }
 
 pub fn get_password_entires(db: &DatabaseFile) -> Vec<PasswordEntry>{
     let mut pw: Vec<PasswordEntry> = Vec::new();
-    pw.push(PasswordEntry{id:"11".to_string(), title:"Wow".to_string(), name: "PassPass".to_string(), 
-        value:"sdasd".to_string(), url:"http::web".to_string(), comment: "".to_string(),
-        entry_type: EntryType::ClassicPassword, last_modified: Local::now()});
-
-    pw.push(PasswordEntry{id:"22".to_string(), title:"Bla".to_string(), name: "Hack.com".to_string(), 
-        value:"xxxOOxx".to_string(), url:"http::hacker".to_string(), comment: "das is comment".to_string(),
-        entry_type: EntryType::ClassicPassword, last_modified: Local::now()});
-
-    pw.append(&mut db.entries.clone());
-    
-    return pw
+    pw.append(&mut db.entries.clone());    
+    pw
 }
 
-pub fn show_entries(db: &DatabaseFile){
-    // Change when implementing TUI, also dont show pw here
-    for password_entry in db.entries.clone(){
-        println!("{:?}", password_entry)
+
+pub fn save_database(db: &DatabaseFile, path: &Option<std::path::PathBuf>, database_name: &String)-> Result<(), anyhow::Error>{
+    let serialized_db = serde_json::to_string(&db)?;
+    encrypt_text(&serialized_db , path.as_ref().unwrap_or(&PathBuf::new().join(database_name.to_owned()+".vault")), &db.password)?;
+    Ok(())
+}
+
+pub fn update_entry(db: &mut DatabaseFile, index_entry: usize, index_detail: usize, message: Vec<String>){
+    let error_string = "error while parsing text";
+    match index_detail {
+            0 => {db.entries[index_entry].title = message.last().unwrap_or(&String::from(error_string)).to_owned()} 
+            1 => {db.entries[index_entry].name = message.last().unwrap_or(&String::from(error_string)).to_owned()}
+            2 => {db.entries[index_entry].value = message.last().unwrap_or(&String::from(error_string)).to_owned()}
+            3 => {db.entries[index_entry].url = message.last().unwrap_or(&String::from(error_string)).to_owned()}
+            4 => {db.entries[index_entry].comment = message.last().unwrap_or(&String::from(error_string)).to_owned()}
+            _ => {}
     }
 }
 
-pub fn save_database(db: &DatabaseFile, args: &Manage)-> Result<(), anyhow::Error>{
-    // Todo this two lines in extra function
-    let serialized_db = serde_json::to_string(&db)?;
-    encrypt_text(&serialized_db , &args.path.as_ref().unwrap_or(&PathBuf::new().join(args.database_name.to_owned()+".vault")), &db.password)?;
-    return Ok(());
+pub fn get_value_from_selected_detail(db: &DatabaseFile, index_entry: usize, index_detail: usize) -> String{
+    match index_detail {
+            0 => {db.entries[index_entry].title.clone()} 
+            1 => {db.entries[index_entry].name.clone()} 
+            2 => {db.entries[index_entry].value.clone()}
+            3 => {db.entries[index_entry].url.clone()}
+            4 => {db.entries[index_entry].comment.clone()}
+            _ => String::from("'")
+    }
 }
