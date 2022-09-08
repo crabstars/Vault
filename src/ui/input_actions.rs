@@ -57,7 +57,6 @@ pub fn key_up(active_menu_item: MenuItem, password_entires_list_state: &mut List
 
 pub fn key_enter(app : &mut App, password_entires_list_state: &mut ListState, detail_list_state: &mut ListState, db: &mut DatabaseFile){  
     app.message.push(app.input.drain(..).collect());
-    //TODO error handling
     let index_entries = password_entires_list_state.selected().unwrap();
     let index_detail = detail_list_state.selected().unwrap();
 

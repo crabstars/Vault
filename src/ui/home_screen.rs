@@ -3,6 +3,7 @@ use crossterm::{
     terminal::{disable_raw_mode, enable_raw_mode},
 };
 
+use anyhow::Ok;
 use std::io;
 use std::sync::mpsc;
 use std::thread;
@@ -19,7 +20,7 @@ use super::{render::*, input_actions, menu_actions};
 use super::structures::*;
 use super::enums::*;
 
-pub fn run_gui(db: &mut DatabaseFile) -> Result<(), Box<dyn std::error::Error>> {
+pub fn run_gui(db: &mut DatabaseFile) -> Result<(), anyhow::Error> {
     enable_raw_mode().expect("can run in raw mode");
     let mut app = App::default();
 
@@ -183,8 +184,7 @@ pub fn run_gui(db: &mut DatabaseFile) -> Result<(), Box<dyn std::error::Error>> 
                             }
                         }
                         _ => {}
-                    },
-                    _ => {},
+                    }
                 }
             }
         }

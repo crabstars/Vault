@@ -2,7 +2,6 @@ use std::usize;
 use std::io::Stdout;
 
 use chrono::Local;
-use anyhow::Error;
 use tui::{
     layout::{Alignment, Constraint, Layout, Direction, Rect},
     style::{Color, Style, Modifier},
@@ -16,7 +15,7 @@ use tui::{
 
 use crate::database::{structures::{PasswordEntry, EntryType, DatabaseFile}, operations::get_password_entires};
 use super::enums::MenuItem;
-use super::structures::App;
+use super::structures::App; 
 
 pub fn render_home<'a>() -> Paragraph<'a> {
     let home = Paragraph::new(vec![
@@ -44,6 +43,13 @@ pub fn render_home<'a>() -> Paragraph<'a> {
     home
 }
 
+fn replace_if_empty(title: String) -> String{
+    if title.is_empty(){
+       return String::from("[[Empty Title]]")
+    }          
+    title
+}
+
 pub fn render_password_entires<'a>(password_entries_list_state: &ListState, db: &DatabaseFile) -> (List<'a>, Table<'a>){
     let entires = Block::default()
     .borders(Borders::ALL)
@@ -56,7 +62,7 @@ pub fn render_password_entires<'a>(password_entries_list_state: &ListState, db: 
         .iter()
         .map(|entry| {
             ListItem::new(Spans::from(vec![Span::styled(
-                entry.name.clone(),
+                replace_if_empty(entry.title.clone()),
                 Style::default(),
             )]))
         })
@@ -68,8 +74,9 @@ pub fn render_password_entires<'a>(password_entries_list_state: &ListState, db: 
                 .selected()
                 .unwrap(),
         )
-        .unwrap_or(&PasswordEntry{id: String::from("1"), title: String::from("Empty"), value: String::from("Empty"), name: String::from("Empty"), 
-            url: String::from("Empty"),comment: String::from("Empty"), entry_type: EntryType::ClassicPassword, last_modified: Local::now()})
+        .unwrap_or(&PasswordEntry{id: String::from("1"), title: String::from("Empty"), 
+            value: String::from("Empty"), name: String::from("Empty"), url: String::from("Empty"), 
+            comment: String::from("Empty"), entry_type: EntryType::ClassicPassword, last_modified: Local::today().to_string()})
         .clone();
 
     let list = List::new(items).block(entires).highlight_style(
@@ -79,10 +86,10 @@ pub fn render_password_entires<'a>(password_entries_list_state: &ListState, db: 
             .add_modifier(Modifier::BOLD),
     );
     let entry_detail = Table::new(vec![Row::new(vec![
-        Cell::from(Span::raw(selected_entry.title)),
-        Cell::from(Span::raw(selected_entry.name)),
+        Cell::from(Span::raw(selected_entry.title.clone())),
+        Cell::from(Span::raw(selected_entry.name.clone())),
         Cell::from(Span::raw("*****")),
-        Cell::from(Span::raw(selected_entry.comment)),
+        Cell::from(Span::raw(selected_entry.comment.clone())),
         Cell::from(Span::raw(selected_entry.last_modified.to_string())),
     ])])
     .header(Row::new(vec![
@@ -206,15 +213,17 @@ pub fn display_selected_entry(db: &DatabaseFile, app: &App, rect: &mut Frame<Cro
     attribute_count
 }
 
-fn render_selected_entry<'a>(index: usize, detail_list_state: &ListState, app: &'a App, db: &DatabaseFile, show_value: &bool) -> (List<'a>, Paragraph<'a>, Paragraph<'a>, usize){
+fn render_selected_entry<'a>(index: usize, detail_list_state: &ListState, app: &'a App, db: &DatabaseFile, show_value: &bool)
+                                -> (List<'a>, Paragraph<'a>, Paragraph<'a>, usize){
     let props = Block::default()
         .borders(Borders::ALL)
         .style(Style::default().fg(Color::White))
         .title("Changeable Properties")
         .border_type(BorderType::Plain);
 
-    let default = PasswordEntry{id: String::from("1"), title: String::from("Empty"), value: String::from("Empty"), name: String::from("Empty"), url: String::from("Empty"),
-                        comment: String::from("Empty"), entry_type: EntryType::ClassicPassword, last_modified: Local::now()};
+    let default = PasswordEntry{id: String::from("1"), title: String::from("Empty"), value: String::from("Empty"),
+                        name: String::from("Empty"), url: String::from("Empty"), comment: String::from("Empty"),
+                        entry_type: EntryType::ClassicPassword, last_modified: Local::now().to_string()};
     let selected_entry = get_password_entires(db).get(index).unwrap_or(&default).clone();
 
     let names: Vec<String> = ["Title".into(), "Name".into(), "Value".into(), "Url".into(), "Comment".into()].to_vec();
@@ -236,43 +245,41 @@ fn render_selected_entry<'a>(index: usize, detail_list_state: &ListState, app: &
             .add_modifier(Modifier::BOLD),
     );
 
-
     let mut value = match detail_list_state.selected().unwrap() {
-        0 => selected_entry.title,
-        1 => selected_entry.name,
-        2 => selected_entry.value,
-        3 => selected_entry.url,
-        4 => selected_entry.comment,
+        0 => selected_entry.title.clone(),
+        1 => selected_entry.name.clone(),
+        2 => selected_entry.value.clone(),
+        3 => selected_entry.url.clone(),
+        4 => selected_entry.comment.clone(),
         _ => "Error".to_owned()
     };
-    if !*show_value && detail_list_state.selected().unwrap() == 2{
-        value = (0..value.len()).map(|_| "*").collect::<String>();
-    }
 
+    let show_value_expression = !*show_value && detail_list_state.selected().unwrap() == 2;
+    value = display_password_correctly(value, &show_value_expression);
     let detail = Paragraph::new(vec![
         Spans::from(vec![Span::raw(value)]),
     ]);
 
+    let text = render_editing_text(app, &show_value_expression);
 
+    let input_field = Paragraph::new(text)
+        .block(Block::default().title("Input-Field").borders(Borders::ALL))
+        .style(Style::default().fg(Color::White))
+        .alignment(Alignment::Center);
+
+    (list, detail, input_field, names.len()) 
+}
+
+fn render_editing_text<'a>(app: &App, show_value_expression: &bool) -> Vec<Spans<'a>>{
     let mut text = vec![];
-
-
     if !app.input.clone().is_empty(){
-
         let mut left_side = app.input[..app.input_index-1].to_string(); 
-        // TODO extract this function (because im using it 3 times)
-        if !*show_value && detail_list_state.selected().unwrap() == 2{
-            left_side = (0..left_side.len()).map(|_| "*").collect::<String>(); 
-        }
-        if app.input.len() > app.input_index-1{
-            let mut middle = app.input.chars().nth(app.input_index-1).unwrap_or_default().to_string();
-            let mut right_side = app.input[app.input_index..].to_string();
-            if !*show_value && detail_list_state.selected().unwrap() == 2{
-                left_side = (0..left_side.len()).map(|_| "*").collect::<String>(); 
-                middle = (0..middle.len()).map(|_| "*").collect::<String>();
-                right_side = (0..right_side.len()).map(|_| "*").collect::<String>();
-            }
-              text = vec![
+        left_side = display_password_correctly(left_side, show_value_expression);
+        if app.input.len() > app.input_index-1{ 
+            let right_side = display_password_correctly(app.input[app.input_index..].to_string(), show_value_expression);
+            let middle = display_password_correctly(app.input.chars().nth(app.input_index-1).unwrap_or_default().to_string(),
+                            show_value_expression); 
+            text = vec![
                 Spans::from(vec![
                     Span::styled(left_side, Style::default().fg(Color::Blue)), //before index
                     Span::styled(middle, 
@@ -290,13 +297,12 @@ fn render_selected_entry<'a>(index: usize, detail_list_state: &ListState, app: &
             ];
         }
     }
+    text
+}
 
-
-    let input_field = Paragraph::new(text)
-        .block(Block::default().title("Input-Field").borders(Borders::ALL))
-        .style(Style::default().fg(Color::White))
-        .alignment(Alignment::Center);
-
-
-    (list, detail, input_field, names.len()) 
+fn display_password_correctly(value: String, show_value_expression: &bool) -> String{ 
+    if *show_value_expression{
+        return (0..value.len()).map(|_| "*").collect::<String>(); 
+    }
+    value
 }

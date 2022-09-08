@@ -3,11 +3,6 @@ use std::env;
 use anyhow::Ok;
 use chrono::Local;
 use uuid::Uuid;
-use tui::{
-    widgets::{
-        ListState
-    }
-};
 
 use crate::{New, Open};
 use crate::database::structures::{Config, DatabaseFile, EntryType};
@@ -44,19 +39,21 @@ pub fn create_new_database(mut args: New) -> Result<(), anyhow::Error>{
         config: Config { comment, author}, last_access: Local::now(), password: password.clone()};
     
     let serialized_db = serde_json::to_string(&db)?;
-    encrypt_text(&serialized_db , &args.path.unwrap_or(PathBuf::new().join(args.database_name+".vault")), &password)?;
+    encrypt_text(&serialized_db, args.path.clone()
+                 .unwrap_or_else(|| PathBuf::new().join(String::from(&args.database_name)+".vault")), &password)?;
     Ok(())
 }
 
 pub fn add_entry(db: &mut DatabaseFile) -> Result<(), anyhow::Error>{ 
     let title = String::from(""); 
-    let name = String::from("New Entry");
+    let name = String::from("");
     let url = String::from("");
     let comment = String::from("");
     let value = String::from("");
 
     let id = Uuid::new_v4().to_string();
-    db.entries.push(PasswordEntry{id, title, name, value, url, comment, entry_type: EntryType::ClassicPassword, last_modified: Local::now()});
+    db.entries.push(PasswordEntry{id, title, name, value, url, comment, 
+        entry_type: EntryType::ClassicPassword, last_modified: Local::now().to_string()});
     Ok(())
 }
 
@@ -74,7 +71,7 @@ pub fn get_password_entires(db: &DatabaseFile) -> Vec<PasswordEntry>{
 
 pub fn save_database(db: &DatabaseFile, path: &Option<std::path::PathBuf>, database_name: &String)-> Result<(), anyhow::Error>{
     let serialized_db = serde_json::to_string(&db)?;
-    encrypt_text(&serialized_db , path.as_ref().unwrap_or(&PathBuf::new().join(database_name.to_owned()+".vault")), &db.password)?;
+    encrypt_text(&serialized_db, path.clone().unwrap_or_else(|| PathBuf::new().join(database_name.to_owned()+".vault")), &db.password)?;
     Ok(())
 }
 
@@ -88,6 +85,7 @@ pub fn update_entry(db: &mut DatabaseFile, index_entry: usize, index_detail: usi
             4 => {db.entries[index_entry].comment = message.last().unwrap_or(&String::from(error_string)).to_owned()}
             _ => {}
     }
+    db.entries[index_entry].last_modified = Local::now().to_string();
 }
 
 pub fn get_value_from_selected_detail(db: &DatabaseFile, index_entry: usize, index_detail: usize) -> String{

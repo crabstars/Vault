@@ -5,7 +5,7 @@ use super::render::render_password_entires;
 
 
 pub fn password_entires_menu(password_entires_list_state: &mut ListState, db: &DatabaseFile, 
-    rect: &mut Frame<CrosstermBackend<Stdout>>, chunks: &Vec<Rect>){
+    rect: &mut Frame<CrosstermBackend<Stdout>>, chunks: &[Rect]){
 
     let password_entry_chunks = Layout::default()
         .direction(Direction::Horizontal)

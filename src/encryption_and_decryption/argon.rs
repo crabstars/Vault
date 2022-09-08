@@ -24,7 +24,7 @@ fn argon2_config<'a>() -> argon2::Config<'a> {
         variant: argon2::Variant::Argon2id,
         hash_length: 32,
         lanes: 8,
-        mem_cost: 16 * 1024, //Todo change to 4048 or ask user
+        mem_cost: 16 * 1024,
         time_cost: 8,
         ..Default::default()
     }
@@ -32,7 +32,7 @@ fn argon2_config<'a>() -> argon2::Config<'a> {
 
 pub fn encrypt_text(
     text: &str,
-    dist_file_path: &PathBuf,
+    dist_file_path: PathBuf,
     password: &str,
 ) -> Result<(), anyhow::Error> {
 
@@ -46,15 +46,15 @@ pub fn encrypt_text(
     // [..32] skips the salt
     let aead = XChaCha20Poly1305::new(key[..32].as_ref().into());
     let mut stream_encryptor = stream::EncryptorBE32::from_aead(aead, nonce.as_ref().into());
-    let mut dist_file = File::create(dist_file_path.to_owned())?;
+    let mut dist_file = File::create(dist_file_path)?;
 
-    dist_file.write(&salt)?;
-    dist_file.write(&nonce)?;
+    dist_file.write_all(&salt)?;
+    dist_file.write_all(&nonce)?;
 
     let ciphertext = stream_encryptor
         .encrypt_next(text.as_bytes())
         .map_err(|err| anyhow!("Encrypting file: {}", err))?;
-    dist_file.write(&ciphertext)?;
+    dist_file.write_all(&ciphertext)?;
 
     empty_all!(nonce, key, salt);
     

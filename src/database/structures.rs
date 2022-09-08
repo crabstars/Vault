@@ -1,14 +1,14 @@
 use serde::{Serialize, Deserialize};
 use chrono::{DateTime, Local};
+use zeroize::{Zeroize, ZeroizeOnDrop};
 
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, Zeroize, ZeroizeOnDrop)]
 pub enum EntryType{
     ClassicPassword,
     EnvironmentVariable
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, Zeroize, ZeroizeOnDrop)]
 pub struct PasswordEntry {
     pub id: String,
     pub title: String,
@@ -17,7 +17,7 @@ pub struct PasswordEntry {
     pub url: String,
     pub comment: String,
     pub entry_type: EntryType,
-    pub last_modified: DateTime<Local>
+    pub last_modified: String
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

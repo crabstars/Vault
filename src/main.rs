@@ -54,8 +54,8 @@ fn main() -> Result<(), anyhow::Error> {
         SubCommand::New(sc) => create_new_database(sc)?,
         SubCommand::Open(mut sc) => {
             let mut db = open_database(&mut sc)?;
-            run_gui(&mut db);  
-            save_database(&db, &sc.path, &sc.database_name)?
+            run_gui(&mut db)?;  
+            save_database(&db, &sc.path, &sc.database_name)?;
         },
     }
 
