@@ -18,6 +18,7 @@ pub trait Database {
     fn save_database(&self, args: &Open)-> Result<(), anyhow::Error>;
     fn get_value_from_selected_detail(&self, index_detail: usize, id: String) -> String;
     fn update_entry(&mut self, index_detail: usize, id: String, message: Vec<String>);
+    fn get_entry_by_id(&self, id: String) -> Option<&PasswordEntry>;
 }
 
 impl Database for DatabaseFile{
@@ -86,6 +87,10 @@ impl Database for DatabaseFile{
                 _ => {}
         }
         entry.last_modified = Local::now().to_string();
+    }
+
+    fn get_entry_by_id(&self, id: String) -> Option<&PasswordEntry>{
+        self.entries.iter().find(|x| x.id == id)
     }
 }
 
