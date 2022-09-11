@@ -13,7 +13,7 @@ use tui::{
     backend::CrosstermBackend,
 };
 
-use crate::database::{structures::{PasswordEntry, EntryType, DatabaseFile}, operations::get_password_entires};
+use crate::database::structures::{PasswordEntry, EntryType, DatabaseFile};
 use super::enums::MenuItem;
 use super::structures::App; 
 
@@ -57,7 +57,7 @@ pub fn render_password_entires<'a>(password_entries_list_state: &ListState, db: 
     .title("Passwords")
     .border_type(BorderType::Plain);
 
-    let entry_list = get_password_entires(db);
+    let entry_list = db.entries.clone();
     let items: Vec<_> = entry_list
         .iter()
         .map(|entry| {
@@ -158,7 +158,7 @@ pub fn render_tabs<'a>( active_menu_item: MenuItem) -> Tabs<'a>{
 fn get_menu_for_mode<'a>(active_menu_item: &MenuItem) -> Vec<Spans<'a>> {
     let men = match active_menu_item {
         MenuItem::SelctedEntry => vec!["home", "password-entries", "edit-value", "ESC-quit-edit", "copy-value", "show-secret", "quit"],
-        MenuItem::PasswordEntries => vec!["home", "password-entries", "select-entry", "add-entry", "quit"],
+        MenuItem::PasswordEntries => vec!["home", "password-entries", "select-entry", "add-entry", "remove-entry", "quit"],
         _ => vec!["home", "password-entries", "quit"],
 
     };
@@ -224,7 +224,7 @@ fn render_selected_entry<'a>(index: usize, detail_list_state: &ListState, app: &
     let default = PasswordEntry{id: String::from("1"), title: String::from("Empty"), value: String::from("Empty"),
                         name: String::from("Empty"), url: String::from("Empty"), comment: String::from("Empty"),
                         entry_type: EntryType::ClassicPassword, last_modified: Local::now().to_string()};
-    let selected_entry = get_password_entires(db).get(index).unwrap_or(&default).clone();
+    let selected_entry = db.entries.get(index).unwrap_or(&default).clone();
 
     let names: Vec<String> = ["Title".into(), "Name".into(), "Value".into(), "Url".into(), "Comment".into()].to_vec();
 

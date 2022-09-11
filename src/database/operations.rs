@@ -11,20 +11,84 @@ use crate::utils::terminal_interactions::{prompt_user, prompt_password};
 
 use super::structures::PasswordEntry;
 
-
-pub fn open_database(args: &mut Open) -> Result<DatabaseFile, anyhow::Error>{
-    if args.path.is_none(){
-        args.path = Some(env::current_dir()?.join(&args.database_name));
-    }
-    
-    let password = rpassword::prompt_password("Please enter the password:")?;
-    let text = decrypt_text(args.path.as_ref().unwrap_or(&PathBuf::new().join(args.database_name.to_owned()+".vault")), &password)?;
-    let mut db: DatabaseFile = serde_json::from_str(&text)?;
-    db.last_access = Local::now();
-    println!("{:?}",db);
-
-    Ok(db)
+pub trait Database {
+    fn new(args: &mut Open) -> Result<Box<Self>, anyhow::Error>;
+    fn add_empty_entry(&mut self) -> String;
+    fn remove_entry_by_id(&mut self, id: String) -> bool;
+    fn save_database(&self, args: &Open)-> Result<(), anyhow::Error>;
+    fn get_value_from_selected_detail(&self, index_detail: usize, id: String) -> String;
+    fn update_entry(&mut self, index_detail: usize, id: String, message: Vec<String>);
 }
+
+impl Database for DatabaseFile{
+    fn new(args: &mut Open) -> Result<Box<DatabaseFile>, anyhow::Error>{
+
+        if args.path.is_none(){
+            args.path = Some(env::current_dir()?.join(&args.database_name));
+        }
+        
+        let password = rpassword::prompt_password("Please enter the password:")?;
+        let text = decrypt_text(args.path.as_ref().unwrap_or(&PathBuf::new().join(args.database_name.to_owned()+".vault")), &password)?;
+        let mut db: DatabaseFile = serde_json::from_str(&text)?;
+        db.last_access = Local::now();
+
+        Ok(Box::new(db))
+    } 
+
+    fn add_empty_entry(&mut self) -> String{
+        let title = String::from(""); 
+        let name = String::from("");
+        let url = String::from("");
+        let comment = String::from("");
+        let value = String::from("");
+        let id = Uuid::new_v4().to_string();
+
+        self.entries.push(PasswordEntry{id: id.clone(), title, name, value, url, comment, 
+            entry_type: EntryType::ClassicPassword, last_modified: Local::now().to_string()});
+        id
+    }
+
+    fn remove_entry_by_id(&mut self, id: String) -> bool{
+        //TODO change function calls or design
+        let count_before = self.entries.len(); 
+        self.entries = self.entries.iter().filter(|x| x.id != id).cloned().collect();
+        count_before < self.entries.len()
+    }
+
+    fn save_database(&self, args: &Open)-> Result<(), anyhow::Error>{
+        let serialized_db = serde_json::to_string(self)?;
+        encrypt_text(&serialized_db, args.path.as_ref().unwrap(), self.password.as_str())?;
+        Ok(())
+    }
+
+    fn get_value_from_selected_detail(&self, index_detail: usize, id: String) -> String{
+        let entry = self.entries.iter().find(|x| x.id == id).unwrap();
+        match index_detail {
+                0 => {entry.title.clone()} 
+                1 => {entry.name.clone()} 
+                2 => {entry.value.clone()}
+                3 => {entry.url.clone()}
+                4 => {entry.comment.clone()}
+                _ => String::from("")
+        }
+    }
+
+    fn update_entry(&mut self, index_detail: usize, id: String, message: Vec<String>){
+        let converted_message = message.last().unwrap_or(&String::from("error while parsing text")).to_owned(); 
+        
+        let entry = self.entries.iter_mut().find(|x| x.id == id).unwrap();
+        match index_detail {
+                0 => {entry.title = converted_message}
+                1 => {entry.name = converted_message} 
+                2 => {entry.value = converted_message}
+                3 => {entry.url = converted_message}
+                4 => {entry.comment = converted_message}
+                _ => {}
+        }
+        entry.last_modified = Local::now().to_string();
+    }
+}
+
 
 pub fn create_new_database(mut args: New) -> Result<(), anyhow::Error>{
     if args.path.is_none(){
@@ -39,62 +103,7 @@ pub fn create_new_database(mut args: New) -> Result<(), anyhow::Error>{
         config: Config { comment, author}, last_access: Local::now(), password: password.clone()};
     
     let serialized_db = serde_json::to_string(&db)?;
-    encrypt_text(&serialized_db, args.path.clone()
-                 .unwrap_or_else(|| PathBuf::new().join(String::from(&args.database_name)+".vault")), &password)?;
+    encrypt_text(&serialized_db, args.path.as_ref()
+                 .unwrap_or(&PathBuf::new().join(String::from(&args.database_name)+".vault")), &password)?;
     Ok(())
-}
-
-pub fn add_entry(db: &mut DatabaseFile) -> Result<(), anyhow::Error>{ 
-    let title = String::from(""); 
-    let name = String::from("");
-    let url = String::from("");
-    let comment = String::from("");
-    let value = String::from("");
-
-    let id = Uuid::new_v4().to_string();
-    db.entries.push(PasswordEntry{id, title, name, value, url, comment, 
-        entry_type: EntryType::ClassicPassword, last_modified: Local::now().to_string()});
-    Ok(())
-}
-
-pub fn remove_entry(db: &mut DatabaseFile, index: usize) -> Result<(), anyhow::Error>{
-    db.entries.remove(index);
-    Ok(())
-}
-
-pub fn get_password_entires(db: &DatabaseFile) -> Vec<PasswordEntry>{
-    let mut pw: Vec<PasswordEntry> = Vec::new();
-    pw.append(&mut db.entries.clone());    
-    pw
-}
-
-
-pub fn save_database(db: &DatabaseFile, path: &Option<std::path::PathBuf>, database_name: &String)-> Result<(), anyhow::Error>{
-    let serialized_db = serde_json::to_string(&db)?;
-    encrypt_text(&serialized_db, path.clone().unwrap_or_else(|| PathBuf::new().join(database_name.to_owned()+".vault")), &db.password)?;
-    Ok(())
-}
-
-pub fn update_entry(db: &mut DatabaseFile, index_entry: usize, index_detail: usize, message: Vec<String>){
-    let error_string = "error while parsing text";
-    match index_detail {
-            0 => {db.entries[index_entry].title = message.last().unwrap_or(&String::from(error_string)).to_owned()} 
-            1 => {db.entries[index_entry].name = message.last().unwrap_or(&String::from(error_string)).to_owned()}
-            2 => {db.entries[index_entry].value = message.last().unwrap_or(&String::from(error_string)).to_owned()}
-            3 => {db.entries[index_entry].url = message.last().unwrap_or(&String::from(error_string)).to_owned()}
-            4 => {db.entries[index_entry].comment = message.last().unwrap_or(&String::from(error_string)).to_owned()}
-            _ => {}
-    }
-    db.entries[index_entry].last_modified = Local::now().to_string();
-}
-
-pub fn get_value_from_selected_detail(db: &DatabaseFile, index_entry: usize, index_detail: usize) -> String{
-    match index_detail {
-            0 => {db.entries[index_entry].title.clone()} 
-            1 => {db.entries[index_entry].name.clone()} 
-            2 => {db.entries[index_entry].value.clone()}
-            3 => {db.entries[index_entry].url.clone()}
-            4 => {db.entries[index_entry].comment.clone()}
-            _ => String::from("'")
-    }
 }

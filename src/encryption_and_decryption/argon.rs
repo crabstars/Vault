@@ -32,7 +32,7 @@ fn argon2_config<'a>() -> argon2::Config<'a> {
 
 pub fn encrypt_text(
     text: &str,
-    dist_file_path: PathBuf,
+    dist_file_path: &PathBuf,
     password: &str,
 ) -> Result<(), anyhow::Error> {
 

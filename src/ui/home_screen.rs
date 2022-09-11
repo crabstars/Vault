@@ -14,7 +14,7 @@ use tui::{
     Terminal,
 };
 
-use crate::database::{structures::DatabaseFile, operations};
+use crate::database::{structures::DatabaseFile, operations::Database};
 
 use super::{render::*, input_actions, menu_actions};
 use super::structures::*;
@@ -89,9 +89,9 @@ pub fn run_gui(db: &mut DatabaseFile) -> Result<(), anyhow::Error> {
                     InputMode::Navigation => match event.code {
                         KeyCode::Char('a') => {
                             if active_menu_item == MenuItem::PasswordEntries{
-                                operations::add_entry(db)?;
+                                db.add_empty_entry();
                                 active_menu_item = MenuItem::SelctedEntry;
-                                password_entires_list_state.select(Some(operations::get_password_entires(db).len()-1));
+                                password_entires_list_state.select(Some(db.entries.len()-1));
                             }
                         }
                         KeyCode::Char('c') => {
@@ -104,7 +104,7 @@ pub fn run_gui(db: &mut DatabaseFile) -> Result<(), anyhow::Error> {
 
                                 let index_entries = password_entires_list_state.selected().unwrap();
                                 let index_detail = detail_list_state.selected().unwrap();
-                                app.input = operations::get_value_from_selected_detail(db, index_entries, index_detail);
+                                app.input = db.get_value_from_selected_detail(index_detail, db.entries[index_entries].id.clone());
                                 app.input_index = app.input.len()+1;
                             }
                         }
@@ -122,14 +122,14 @@ pub fn run_gui(db: &mut DatabaseFile) -> Result<(), anyhow::Error> {
                             break;
                         }
                         KeyCode::Char('r') =>{
-                            let password_len = operations::get_password_entires(db).len();
+                            let password_len = db.entries.len();
                             if active_menu_item == MenuItem::PasswordEntries && password_len != 0 && password_len > password_entires_list_state.selected().unwrap_or(0){
-                                operations::remove_entry(db, password_entires_list_state.selected().unwrap())?;
+                                db.remove_entry_by_id(db.entries[password_entires_list_state.selected().unwrap()].id.clone());
                             }
                         }
                         KeyCode::Char('s') => {
                             if active_menu_item == MenuItem::PasswordEntries{
-                                let password_len = operations::get_password_entires(db).len();
+                                let password_len = db.entries.len();
                                 if password_len != 0 && password_len > password_entires_list_state.selected().unwrap_or(0){
                                     active_menu_item = MenuItem::SelctedEntry
                                 }

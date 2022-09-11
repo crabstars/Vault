@@ -3,9 +3,11 @@ mod utils;
 mod encryption_and_decryption;
 mod ui;
 
+use std::path::PathBuf;
 use anyhow::Ok;
 use clap::{Parser, Subcommand};
-use database::operations::{create_new_database, open_database, save_database};
+use database::operations::{create_new_database, Database};
+use crate::database::structures::DatabaseFile;
 
 use ui::home_screen::run_gui;
 
@@ -26,13 +28,13 @@ enum SubCommand {
 #[derive(Parser)]
 pub struct New{
     /// FileName for new created database
-    #[clap(short, long)] 
+    #[clap(short, long)]
     database_name: String, 
 
     /// Absolute path for file is required
     #[clap(short, long)]
     #[clap(parse(from_os_str))]
-    path: Option<std::path::PathBuf>
+    path: Option<PathBuf>
 }
 
 #[derive(Parser)]
@@ -44,7 +46,7 @@ pub struct Open{
     /// Absolute path for file is required
     #[clap(short, long)]
     #[clap(parse(from_os_str))]
-    path: Option<std::path::PathBuf>
+    path: Option<PathBuf>
 }
 
 fn main() -> Result<(), anyhow::Error> {
@@ -53,9 +55,9 @@ fn main() -> Result<(), anyhow::Error> {
     match command.subcmd{
         SubCommand::New(sc) => create_new_database(sc)?,
         SubCommand::Open(mut sc) => {
-            let mut db = open_database(&mut sc)?;
+            let mut db: DatabaseFile = *Database::new(&mut sc)?;
             run_gui(&mut db)?;  
-            save_database(&db, &sc.path, &sc.database_name)?;
+            db.save_database(&sc)?;
         },
     }
 

@@ -1,5 +1,6 @@
 use tui::widgets::ListState;
-use crate::database::{operations::{get_password_entires, update_entry}, structures::DatabaseFile};
+use crate::database::structures::DatabaseFile;
+use crate::database::operations::Database;
 use super::enums::MenuItem;
 use super::structures::*;
 use super::enums::*;
@@ -8,7 +9,7 @@ use cli_clipboard::{ClipboardContext, ClipboardProvider};
 pub fn key_down(active_menu_item: MenuItem, password_entires_list_state: &mut ListState, detail_list_state: &mut ListState,
                 db: &DatabaseFile, attribute_count: &usize){
     if active_menu_item == MenuItem::PasswordEntries{
-        let amount_entries = get_password_entires(db).len();
+        let amount_entries = db.entries.len();
         if amount_entries == 0 {
             return 
         }
@@ -33,7 +34,7 @@ pub fn key_down(active_menu_item: MenuItem, password_entires_list_state: &mut Li
 pub fn key_up(active_menu_item: MenuItem, password_entires_list_state: &mut ListState, detail_list_state: &mut ListState,
               db: &DatabaseFile, attribute_count: &usize){
     if active_menu_item == MenuItem::PasswordEntries{
-        let amount_entries = get_password_entires(db).len();
+        let amount_entries = db.entries.len();
         if amount_entries == 0 {
             return
         }
@@ -60,7 +61,7 @@ pub fn key_enter(app : &mut App, password_entires_list_state: &mut ListState, de
     let index_entries = password_entires_list_state.selected().unwrap();
     let index_detail = detail_list_state.selected().unwrap();
 
-    update_entry(db, index_entries, index_detail, app.message.clone());
+    db.update_entry(index_detail, db.entries[index_entries].id.clone(), app.message.clone());
     app.input_mode = InputMode::Navigation;
     app.input_index = 0;
     app.input = String::new();
