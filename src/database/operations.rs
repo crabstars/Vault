@@ -4,7 +4,7 @@ use anyhow::Ok;
 use chrono::Local;
 use uuid::Uuid;
 
-use crate::{New, Open};
+use crate::New;
 use crate::database::structures::{Config, DatabaseFile, EntryType};
 use crate::encryption_and_decryption::argon::{decrypt_text, encrypt_text};
 use crate::utils::terminal_interactions::{prompt_user, prompt_password};
@@ -12,24 +12,25 @@ use crate::utils::terminal_interactions::{prompt_user, prompt_password};
 use super::structures::PasswordEntry;
 
 pub trait Database {
-    fn new(args: &mut Open) -> Result<Box<Self>, anyhow::Error>;
+    fn new(path: &mut Option<PathBuf>, database_name: &str) -> Result<Box<Self>, anyhow::Error>;
     fn add_empty_entry(&mut self) -> String;
     fn remove_entry_by_id(&mut self, id: String) -> bool;
-    fn save_database(&self, args: &Open)-> Result<(), anyhow::Error>;
+    fn save_database(&self, path: &Option<PathBuf>)-> Result<(), anyhow::Error>; 
     fn get_value_from_selected_detail(&self, index_detail: usize, id: String) -> String;
     fn update_entry(&mut self, index_detail: usize, id: String, message: Vec<String>);
     fn get_entry_by_id(&self, id: String) -> Option<&PasswordEntry>;
 }
 
 impl Database for DatabaseFile{
-    fn new(args: &mut Open) -> Result<Box<DatabaseFile>, anyhow::Error>{
+    
+    fn new(path: &mut Option<PathBuf>, database_name: &str) -> Result<Box<DatabaseFile>, anyhow::Error>{
 
-        if args.path.is_none(){
-            args.path = Some(env::current_dir()?.join(&args.database_name));
+        if path.is_none(){
+            *path = Some(env::current_dir()?.join(database_name));
         }
         
         let password = rpassword::prompt_password("Please enter the password:")?;
-        let text = decrypt_text(args.path.as_ref().unwrap_or(&PathBuf::new().join(args.database_name.to_owned()+".vault")), &password)?;
+        let text = decrypt_text(path.as_ref().unwrap_or(&PathBuf::new().join(database_name.to_owned()+".vault")), &password)?;
         let mut db: DatabaseFile = serde_json::from_str(&text)?;
         db.last_access = Local::now();
 
@@ -56,9 +57,9 @@ impl Database for DatabaseFile{
         count_before < self.entries.len()
     }
 
-    fn save_database(&self, args: &Open)-> Result<(), anyhow::Error>{
+    fn save_database(&self, path: &Option<PathBuf>)-> Result<(), anyhow::Error>{
         let serialized_db = serde_json::to_string(self)?;
-        encrypt_text(&serialized_db, args.path.as_ref().unwrap(), self.password.as_str())?;
+        encrypt_text(&serialized_db, path.as_ref().unwrap(), self.password.as_str())?;
         Ok(())
     }
 
