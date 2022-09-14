@@ -17,7 +17,15 @@ pub struct PasswordEntry {
     pub url: String,
     pub comment: String,
     pub entry_type: EntryType,
-    pub last_modified: String
+    pub last_modified: String,
+    pub files: Vec<CustomFile>
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, Zeroize, ZeroizeOnDrop)]
+pub struct CustomFile {
+    pub content: String, //Base64 encoding
+    pub comment: String,
+    pub name: String
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
