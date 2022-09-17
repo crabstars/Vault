@@ -41,12 +41,12 @@ impl Database for DatabaseFile{
         let title = String::from(""); 
         let name = String::from("");
         let url = String::from("");
-        let comment = String::from("");
+        let comment = String::from(""); 
         let value = String::from("");
         let id = Uuid::new_v4().to_string();
 
         self.entries.push(PasswordEntry{id: id.clone(), title, name, value, url, comment, 
-            entry_type: EntryType::ClassicPassword, last_modified: Local::now().to_string()});
+            entry_type: EntryType::ClassicPassword, last_modified: Local::now().to_string(), files: Vec::new()});
         id
     }
 

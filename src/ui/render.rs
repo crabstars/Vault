@@ -76,7 +76,8 @@ pub fn render_password_entires<'a>(password_entries_list_state: &ListState, db: 
         )
         .unwrap_or(&PasswordEntry{id: String::from("1"), title: String::from("Empty"), 
             value: String::from("Empty"), name: String::from("Empty"), url: String::from("Empty"), 
-            comment: String::from("Empty"), entry_type: EntryType::ClassicPassword, last_modified: Local::today().to_string()})
+            comment: String::from("Empty"), entry_type: EntryType::ClassicPassword, last_modified: Local::today().to_string(),
+            files: Vec::new()})
         .clone();
 
     let list = List::new(items).block(entires).highlight_style(
@@ -223,7 +224,8 @@ fn render_selected_entry<'a>(index: usize, detail_list_state: &ListState, app: &
 
     let default = PasswordEntry{id: String::from("1"), title: String::from("Empty"), value: String::from("Empty"),
                         name: String::from("Empty"), url: String::from("Empty"), comment: String::from("Empty"),
-                        entry_type: EntryType::ClassicPassword, last_modified: Local::now().to_string()};
+                        entry_type: EntryType::ClassicPassword, last_modified: Local::now().to_string(),
+                        files: Vec::new()};
     let selected_entry = db.entries.get(index).unwrap_or(&default).clone();
 
     let names: Vec<String> = ["Title".into(), "Name".into(), "Value".into(), "Url".into(), "Comment".into()].to_vec();
