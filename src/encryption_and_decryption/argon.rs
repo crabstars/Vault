@@ -1,14 +1,16 @@
 use anyhow::anyhow;
 use chacha20poly1305::{
-    aead::{stream, NewAead},
+    aead::{stream, KeyInit},
     XChaCha20Poly1305,
 };
 use rand::{rngs::OsRng, RngCore};
+use std::str;
 use std::{
     fs::File,
-    io::{Read, Write}, vec, path::PathBuf,
+    io::{Read, Write},
+    path::PathBuf,
+    vec,
 };
-use std::str;
 use zeroize::Zeroize;
 
 macro_rules! empty_all {
@@ -35,7 +37,6 @@ pub fn encrypt_text(
     dist_file_path: &PathBuf,
     password: &str,
 ) -> Result<(), anyhow::Error> {
-
     let mut salt = [0u8; 32];
     let mut nonce = [0u8; 19];
     OsRng.fill_bytes(&mut salt);
@@ -57,10 +58,9 @@ pub fn encrypt_text(
     dist_file.write_all(&ciphertext)?;
 
     empty_all!(nonce, key, salt);
-    
+
     Ok(())
 }
-
 
 pub fn decrypt_text(
     encrypted_file_path: &PathBuf,
@@ -87,13 +87,12 @@ pub fn decrypt_text(
     let aead = XChaCha20Poly1305::new(key[..32].as_ref().into());
     let mut stream_decryptor = stream::DecryptorBE32::from_aead(aead, nonce.as_ref().into());
 
-    let mut buf:Vec<u8> = vec![];
+    let mut buf: Vec<u8> = vec![];
     encrypted_file.read_to_end(&mut buf)?;
     let text = stream_decryptor
-                .decrypt_next(buf.as_slice())
-                .map_err(|err| anyhow!("Decrypting file: {}", err))?;
-            file_content.push_str(str::from_utf8(&text)?);
-
+        .decrypt_next(buf.as_slice())
+        .map_err(|err| anyhow!("Decrypting file: {}", err))?;
+    file_content.push_str(str::from_utf8(&text)?);
 
     empty_all!(nonce, key, salt);
     Ok(file_content)

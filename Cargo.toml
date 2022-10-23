@@ -6,20 +6,21 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-cli-clipboard = "0.2.1"
-chacha20poly1305 = { version = "0.9.0", features = ["stream"] }
+cli-clipboard = "0.3.0"
+chacha20poly1305 = { version = "0.10.1", features = ["stream"] }
 anyhow = "1.0"
 rand = "0.8"
 zeroize = {version = "1.5.7", features = ["derive"]}
 rust-argon2 = "1.0"
-rpassword = "6.0.1"
-clap = { version = "3.1.18", features = ["derive"] }
+rpassword = "7.1.0"
+clap = { version = "4.0.15", features = ["derive"] }
 chrono = {version ="0.4.19", features = ["serde"] }
 serde = {version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-tui = "0.18.0"
-crossterm = "0.23"
+serde_json = "1.0.87"
+tui = "0.19.0"
+crossterm = "0.25.0"
 thiserror = "1.0"
+clearscreen = "1.0.10"
 
 [dependencies.uuid]
 version = "1.1.2"
